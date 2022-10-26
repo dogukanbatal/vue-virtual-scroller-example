@@ -1,58 +1,152 @@
+<script>
+import ItemCard from "@/components/Item";
+import { generateMessage } from "../data";
+import { DynamicScroller, DynamicScrollerItem } from "vue-virtual-scroller";
+import "vue-virtual-scroller/dist/vue-virtual-scroller.css";
+
+let id = 0;
+const messages = [];
+for (let i = 0; i < 50; i++) {
+  messages.push(generateMessage());
+}
+
+export default {
+  components: { ItemCard, DynamicScroller, DynamicScrollerItem },
+
+  data() {
+    return {
+      items: [],
+      search: "",
+      streaming: false,
+    };
+  },
+  computed: {
+    filteredItems() {
+      const { search, items } = this;
+      if (!search) return items;
+      const lowerCaseSearch = search.toLowerCase();
+      return items.filter((i) =>
+        i.message.toLowerCase().includes(lowerCaseSearch)
+      );
+    },
+  },
+  unmounted() {
+    this.stopStream();
+  },
+  methods: {
+    changeMessage(message) {
+      Object.assign(message, generateMessage());
+    },
+    addMessage() {
+      for (let i = 0; i < 10; i++) {
+        this.items.push({
+          id: id++,
+          ...messages[id % 50],
+        });
+      }
+      this.scrollToBottom();
+      if (this.streaming) {
+        requestAnimationFrame(this.addMessage);
+      }
+    },
+    scrollToBottom() {
+      this.$refs.scroller.scrollToBottom();
+    },
+    startStream() {
+      if (this.streaming) return;
+      this.streaming = true;
+      this.addMessage();
+    },
+    stopStream() {
+      this.streaming = false;
+    },
+  },
+};
+</script>
+
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel" target="_blank" rel="noopener">babel</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint" target="_blank" rel="noopener">eslint</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
+  <div class="chat-demo">
+    <div class="toolbar">
+      <button v-if="!streaming" @click="startStream()">Start stream</button>
+      <button v-else @click="stopStream()">Stop stream</button>
+
+      <input v-model="search" placeholder="Filter..." />
+    </div>
+
+    <DynamicScroller
+      ref="scroller"
+      :items="filteredItems"
+      :min-item-size="54"
+      class="scroller"
+    >
+      <template #before>
+        <div class="notice">The message heights are unknown.</div>
+      </template>
+
+      <template #default="{ item, index, active }">
+        <DynamicScrollerItem
+          :item="item"
+          :active="active"
+          :size-dependencies="[item.message]"
+          :data-index="index"
+          :data-active="active"
+          :title="`Click to change message ${index}`"
+          class="message"
+          @click="changeMessage(item)"
+        >
+          <ItemCard :item="item" />
+        </DynamicScrollerItem>
+      </template>
+    </DynamicScroller>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'HelloWorld',
-  props: {
-    msg: String
-  }
-}
-</script>
-
-<!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-h3 {
-  margin: 40px 0 0;
+.chat-demo {
+  overflow: hidden;
+  flex: auto 1 1;
+  display: flex;
+  flex-direction: column;
 }
-ul {
-  list-style-type: none;
-  padding: 0;
+.scroller {
+  flex: auto 1 1;
 }
-li {
+.notice {
+  padding: 24px;
+  font-size: 20px;
+  color: #999;
+}
+.message {
+  display: flex;
+  min-height: 32px;
+  padding: 12px;
+  box-sizing: border-box;
+}
+.avatar {
+  flex: auto 0 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 12px;
+}
+.avatar .image {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 50%;
+}
+.index,
+.text {
+  flex: 1;
+}
+.text {
+  max-width: 400px;
+}
+.index {
+  opacity: 0.5;
+}
+.index span {
   display: inline-block;
-  margin: 0 10px;
-}
-a {
-  color: #42b983;
+  width: 160px;
+  text-align: right;
 }
 </style>
